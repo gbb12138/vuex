@@ -1,70 +1,81 @@
-/**
- * 1. 需要实现一个vuex插件， 将用户传入的store变成每个组件的$store， 实现state，getters,mutation,action
- * state => 放到vue实例的data中，变成响应式的数据，取state时返回data中的数据
- * getters => 放到vue实例中的computed中，取getters时代理到vue实例的computed
- */
+import ModuleCollection from "@/vuex/module/module-collection";
 let Vue;
-const forEachValue =  (obj, callback) => {
-    Object.keys(obj).forEach(key => {
-        callback(obj[key], key)
+const installModule = (store, path, module, rootState) => {
+    // 将子模块的state都加到根模块的state中  $store.state.a.aAge
+    if (path.length > 0) { // path：[a] => [a,c]
+        // 是子模块， 给rootState添加模块名称作属性
+        // 合并后的根state = rootState: {
+        //   ...
+        //   a:{
+        //      ...
+        //      c: {}
+        //   },
+        //   b:{}
+        // }
+        let parent = path.slice(0, -1).reduce((memo, current)=> {
+            return memo[current]
+        }, rootState)
+        Vue.set(parent, path[path - 1], module.state)
+    }
+
+    // 多个同名的mutation，commit时都会执行
+    module.forEachMutation((mutation, mutationKey) => {
+        store._mutations[mutationKey] = store._mutations[mutationKey] || []
+        store._mutations[mutationKey].push((payload) => {
+            mutation(module.state, payload)
+        })
+    })
+    // 多个同名的action，dispatch时都会执行
+    module.forEachAction((action, key) => {
+        store._actions[key] = (store._actions[key] || [])
+        store._actions[key].push((payload) => {
+            action(store, payload)
+        })
+    })
+    // todo：同名getter会覆盖 ？？？
+    module.forEachGetter((getter, key) => {
+        store._wrappedGetters[key] = () => {
+            return getter(module.state)
+        }
+    })
+    // 递归子模块
+    module.forEachChildren((child, key) => {
+        installModule(store,path.concat(key),child, rootState)
     })
 }
-
-/**
- * 返回模块的根结点
- root = {
-    _row: '默认显示用户的原始内容',
-    _children:{
-    a: {_row: 'a模块的原始内容', _children: {},state: aState}
-    b: {_row: 'b模块的原始内容', _children: {},state: bState}
-    },
-    state: '根模块的状态'
- }
- */
-class ModuleCollection{
-    constructor(options) {
-        this.root = null; // 最后将数据绑到root上
-        // [父亲模块，儿子模块，孙子模块]
-        let root = this.register([], options)
-        console.log(root, 7777)
-    }
-    // path: [] => [a] => [a, c]
-    register (path, rootModule) {
-        debugger
-        let module = {
-            _row: rootModule,
-            _children: {},
-            state: rootModule.state
-        }
-        if (!path.length) { // 是根结点
-            this.root = module
-        } else {
-            // 找到父模块， 从根结点开始找，找到path倒数第二个对应的module，就是父模块
-            // array.reduce(function(total：计算结束后的返回值, currentValue：当前值, currentIndex：当前索引, arr：数组本身), initialValue：total的初始值)
-            let parent = path.slice(0, -1).reduce((memo, currentVal) => {
-                return memo._children[currentVal]
-            }, this.root)
-            parent._children[path[path.length - 1]] = module
-        }
-        if (rootModule.modules) {
-            forEachValue(rootModule.modules, (module, moduleName) => {
-                this.register(path.concat(moduleName), module)
-            })
-        }
-        return module
-    }
-}
-
-
 class Store{
     constructor(options) {
-        this._module = new ModuleCollection(options)
+        // 1 对用的数据格式化，生成module树
+        // {
+        //      root: {
+        //         _row: '默认显示用户的原始内容',
+        //         _children:{
+        //             a: {_row: 'a模块的原始内容', _children: {},state: aState}
+        //             b: {_row: 'b模块的原始内容', _children: {},state: bState}
+        //         },
+        //         state: '根模块的状态'
+        //      }
+        // }
+        let store = this;
+        this._module = new ModuleCollection(options);
+        this._mutations = {}; // 收集所有的mutation
+        this._actions = {}; // 收集所有的actions
+        this._wrappedGetters = {}; // 收集所有的getters
+
+        let state = options.state; // 根模块的state
+        this._vm = new Vue({
+            data: {
+                $$state: state
+            }
+        })
+        installModule(store,[],store._module.root, state)
+        console.log(store, 777)
     }
     /**
      * 实现state
      */
     get state () {
-        return this.vm._data.$$state
+        return this._vm._data.$$state
     }
     // store.commit('changeAge', payload)
     commit = (type, payload) => { // 使用箭头函数，使this永远指向store

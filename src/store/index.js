@@ -7,6 +7,9 @@ const store = new Vuex.Store({
   strict: true,
   state: {  // 共享的状态，data
     age: 18,
+    a: {  // todo：渲染时 $store.state.a.aAge 与modules中a的state=》aAge 重名，这时显示的是模块a中的aAge ！！！
+      aAge: 1000
+    }
   },
   getters: { // 计算属性 ==》 就是computed
     getAge (state) {
