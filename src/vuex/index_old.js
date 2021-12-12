@@ -9,56 +9,65 @@ const forEachValue =  (obj, callback) => {
         callback(obj[key], key)
     })
 }
-
-/**
- * 返回模块的根结点
- root = {
-    _row: '默认显示用户的原始内容',
-    _children:{
-    a: {_row: 'a模块的原始内容', _children: {},state: aState}
-    b: {_row: 'b模块的原始内容', _children: {},state: bState}
-    },
-    state: '根模块的状态'
- }
- */
-class ModuleCollection{
-    constructor(options) {
-        this.root = null; // 最后将数据绑到root上
-        // [父亲模块，儿子模块，孙子模块]
-        let root = this.register([], options)
-        console.log(root, 7777)
-    }
-    // path: [] => [a] => [a, c]
-    register (path, rootModule) {
-        debugger
-        let module = {
-            _row: rootModule,
-            _children: {},
-            state: rootModule.state
-        }
-        if (!path.length) { // 是根结点
-            this.root = module
-        } else {
-            // 找到父模块， 从根结点开始找，找到path倒数第二个对应的module，就是父模块
-            // array.reduce(function(total：计算结束后的返回值, currentValue：当前值, currentIndex：当前索引, arr：数组本身), initialValue：total的初始值)
-            let parent = path.slice(0, -1).reduce((memo, currentVal) => {
-                return memo._children[currentVal]
-            }, this.root)
-            parent._children[path[path.length - 1]] = module
-        }
-        if (rootModule.modules) {
-            forEachValue(rootModule.modules, (module, moduleName) => {
-                this.register(path.concat(moduleName), module)
-            })
-        }
-        return module
-    }
-}
-
-
 class Store{
     constructor(options) {
-        this._module = new ModuleCollection(options)
+        // this.state = options.state; // 这样通过$store能拿到state，但state不是响应式的
+        let state = options.state;
+        let computed = {};
+        /**
+         * 实现computed
+         */
+        let getters = options.getters;
+        this.getters = {};
+        // Object.keys(getters).forEach(key => {
+        //     // 组装computed
+        //     computed[key] = () => {
+        //         return getters[key](this.state)
+        //     }
+        //     // 劫持取getters时去computed取
+        //     Object.defineProperty(this.getters, key, {
+        //         get:() => {
+        //             return this.vm[key]  //去computed取时，computed依赖的值不变，watcher的dirty为false，不会触发重新计算
+        //         }
+        //     })
+        // })
+        forEachValue(getters, (value, key) => {
+            // 组装computed
+            computed[key] = () => {
+                return value(this.state)
+            }
+            // 劫持取getters时去computed取
+            Object.defineProperty(this.getters, key, {
+                get:() => {
+                    return this.vm[key]  //去computed取时，computed依赖的值不变，watcher的dirty为false，不会触发重新计算
+                }
+            })
+        })
+        this.vm = new Vue({
+            data () {
+                return {
+                    $$state: state // 定义以$开头的属性不会定义在vm上
+                }
+            },
+            computed
+        })
+        /**
+         * 实现mutation
+         */
+        let mutations = options.mutations;
+        this.mutations = {};
+        forEachValue(mutations, (fn, key) => {
+            this.mutations[key] = (payload) => fn(this.state, payload)
+        })
+        /**
+         * 实现actions
+         */
+        let actions = options.actions;
+        this.actions = {};
+        forEachValue(actions, (fn, key) => {
+            this.actions[key] = (payload) => fn(this, payload)
+        })
+
     }
     /**
      * 实现state

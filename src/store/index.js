@@ -1,4 +1,5 @@
 import Vue from 'vue'
+// import Vuex from 'vuex'
 import Vuex from '@/vuex'
 Vue.use(Vuex)
 // vuex是一个插件，可以通过 use注册，vueX => {install, Store(类)}
@@ -29,6 +30,33 @@ const store = new Vuex.Store({
     }
   },
   modules: {
+    a: {
+      state: {
+        aAge: 200
+      },
+      mutations: {
+        changeAge (state, payload) {
+          state.aAge += payload
+        }
+      },
+      modules: {
+        c: {
+          state: {
+            cAge: 400
+          }
+        }
+      }
+    },
+    b: {
+      state: {
+        bAge: 300
+      },
+      mutations: {
+        changeAge (state, payload) {
+          state.bAge += payload
+        }
+      }
+    }
   }
 })
 export default store;

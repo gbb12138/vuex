@@ -5,7 +5,9 @@
     <p>你的年纪{{$store.getters.getAge}}</p>
     <button @click="$store.commit('changeAge', 10)">同步修改</button>
     <button @click="$store.dispatch('changeAge', 5)">异步修改</button>
-    <button @click="$store.state.age++">恶心更新</button>
+    <button @click="$store.state.age++">强行更新</button>
+    <p>a的状态{{$store.state.a.aAge}}</p>
+    <p>b的状态{{$store.state.b.bAge}}</p>
   </div>
 </template>
 
