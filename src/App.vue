@@ -1,7 +1,11 @@
 <template>
   <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <p>我的年纪{{$store.state.age}}</p>
+    <p>你的年纪{{$store.getters.getAge}}</p>
+    <p>你的年纪{{$store.getters.getAge}}</p>
+    <button @click="$store.commit('changeAge', 10)">同步修改</button>
+    <button @click="$store.dispatch('changeAge', 5)">异步修改</button>
+    <button @click="$store.state.age++">恶心更新</button>
   </div>
 </template>
 
@@ -10,8 +14,8 @@ import HelloWorld from './components/HelloWorld.vue'
 
 export default {
   name: 'App',
-  components: {
-    HelloWorld
+  mounted() {
+    console.log(this.$store, 'APP mounted')
   }
 }
 </script>
