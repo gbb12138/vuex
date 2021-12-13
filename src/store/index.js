@@ -34,7 +34,7 @@ const store = new Vuex.Store({
   },
   modules: {
     a: {
-      namespaced:true, // 模块的命名空间
+      // namespaced:true, // 模块的命名空间
       state: {
         aAge: 200
       },
@@ -45,14 +45,20 @@ const store = new Vuex.Store({
       },
       modules: {
         c: {
+          namespaced:true,  // a没有命名空间，c有命名空间， 路径不写a/这一层
           state: {
             cAge: 400
-          }
+          },
+          mutations: {
+            changeAge (state, payload) {
+              state.cAge += payload
+            }
+          },
         }
       }
     },
     b: {
-      namespaced:true,
+      namespaced:true, // 命名空间
       state: {
         bAge: 300
       },

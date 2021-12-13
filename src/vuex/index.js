@@ -2,6 +2,9 @@ import ModuleCollection from "@/vuex/module/module-collection";
 import {forEachValue} from "@/vuex/utils";
 let Vue;
 const installModule = (store, path, module, rootState) => {
+    // todo： 计算当前的命名空间，在订阅的时候，每个key前面都增加一个命名空间
+    // todo：  vuex中插件的使用和其他特点 待补充
+
     // 将子模块的state都加到根模块的state中  $store.state.a.aAge
     if (path.length > 0) { // path：[a] => [a,c]
         // 是子模块， 给rootState添加模块名称作属性
