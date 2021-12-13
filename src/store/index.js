@@ -1,15 +1,15 @@
 import Vue from 'vue'
-// import Vuex from 'vuex'
-import Vuex from '@/vuex'
+import Vuex from 'vuex'
+// import Vuex from '@/vuex'
 Vue.use(Vuex)
 // vuex是一个插件，可以通过 use注册，vueX => {install, Store(类)}
 const store = new Vuex.Store({
   strict: true,
   state: {  // 共享的状态，data
     age: 18,
-    a: {  // todo：渲染时 $store.state.a.aAge 与modules中a的state=》aAge 重名，这时显示的是模块a中的aAge ！！！
-      aAge: 1000
-    }
+    // a: {  // todo：渲染时 $store.state.a.aAge 与modules中a的state=》aAge 重名，这时显示的是模块a中的aAge ！！！
+    //   aAge: 1000
+    // }
   },
   getters: { // 计算属性 ==》 就是computed
     getAge (state) {
@@ -34,6 +34,7 @@ const store = new Vuex.Store({
   },
   modules: {
     a: {
+      namespaced:true, // 模块的命名空间
       state: {
         aAge: 200
       },
@@ -51,8 +52,15 @@ const store = new Vuex.Store({
       }
     },
     b: {
+      namespaced:true,
       state: {
         bAge: 300
+      },
+      getters: { // 计算属性 ==》 就是computed
+        getAge (state) {
+          console.log('run getters')
+          return state.bAge - 1;
+        }
       },
       mutations: {
         changeAge (state, payload) {

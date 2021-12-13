@@ -1,4 +1,5 @@
 import ModuleCollection from "@/vuex/module/module-collection";
+import {forEachValue} from "@/vuex/utils";
 let Vue;
 const installModule = (store, path, module, rootState) => {
     // 将子模块的state都加到根模块的state中  $store.state.a.aAge
@@ -15,9 +16,10 @@ const installModule = (store, path, module, rootState) => {
         let parent = path.slice(0, -1).reduce((memo, current)=> {
             return memo[current]
         }, rootState)
-        Vue.set(parent, path[path - 1], module.state)
+        // 后续数据可能是动态注册的模块，如果原来没有属性，新增了不会使视图变化
+        // 通过set变成响应式数据
+        Vue.set(parent, path[path.length - 1], module.state)
     }
-
     // 多个同名的mutation，commit时都会执行
     module.forEachMutation((mutation, mutationKey) => {
         store._mutations[mutationKey] = store._mutations[mutationKey] || []
@@ -34,13 +36,37 @@ const installModule = (store, path, module, rootState) => {
     })
     // todo：同名getter会覆盖 ？？？
     module.forEachGetter((getter, key) => {
-        store._wrappedGetters[key] = () => {
+        store._wrappedGetters[key] = function() {
             return getter(module.state)
         }
     })
     // 递归子模块
     module.forEachChildren((child, key) => {
         installModule(store,path.concat(key),child, rootState)
+    })
+}
+
+/**
+ * 根模块的state
+ * @param store
+ * @param state
+ */
+function setStoreVm (store, state) {
+    // 将getters放到computed中
+    let computed = {};
+    forEachValue(store._wrappedGetters, (getter, key) => {
+        computed[key] = () => {
+            return getter(store.state)
+        }
+        Object.defineProperty(store.getters, key, {
+            get: () => store._vm[key]
+        })
+    })
+    store._vm = new Vue({
+        data: {
+            $$state: state
+        },
+        computed
     })
 }
 class Store{
@@ -57,18 +83,14 @@ class Store{
         //      }
         // }
         let store = this;
-        this._module = new ModuleCollection(options);
-        this._mutations = {}; // 收集所有的mutation
-        this._actions = {}; // 收集所有的actions
-        this._wrappedGetters = {}; // 收集所有的getters
-
-        let state = options.state; // 根模块的state
-        this._vm = new Vue({
-            data: {
-                $$state: state
-            }
-        })
+        let state = options.state
+        store._module = new ModuleCollection(options);
+        store._mutations = {}; // 收集所有的mutation
+        store._actions = {}; // 收集所有的actions
+        store._wrappedGetters = {}; // 收集所有的getters
+        store.getters = {};
         installModule(store,[],store._module.root, state)
+        setStoreVm(store, state);
         console.log(store, 777)
     }
     /**
@@ -79,10 +101,10 @@ class Store{
     }
     // store.commit('changeAge', payload)
     commit = (type, payload) => { // 使用箭头函数，使this永远指向store
-        this.mutations[type](payload);
+        this._mutations[type].forEach(fn => fn(payload));
     }
     dispatch = (type, payload) => {
-        this.actions[type](payload)
+        this._actions[type].forEach(fn => fn(payload))
     }
 }
 const Vuex = {
